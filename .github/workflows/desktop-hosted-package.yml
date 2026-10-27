@@ -1,0 +1,155 @@
+# Unsigned Desktop installers on GitHub-hosted runners.
+# macos-15 is Apple Silicon (arm64). windows-2025 is x64.
+# Signed release packaging stays on the self-hosted workflows.
+name: Package Desktop · hosted
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_version:
+        description: '构建版本：留空使用源码产品版本；填写时须为该版本或受支持的预发布后缀'
+        type: string
+        default: ''
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hosted-desktop-package-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PRIMARY_NODE_VERSION: '24'
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  mac-arm64:
+    name: macOS arm64
+    runs-on: macos-15
+    timeout-minutes: 180
+    env:
+      PACKAGE_BUILD_VERSION: ${{ inputs.build_version }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          clean: true
+      - uses: pnpm/action-setup@v5.0.0
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm-${{ github.run_id }}-${{ github.run_attempt }}-mac-arm64
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: ${{ env.PRIMARY_NODE_VERSION }}
+          package-manager-cache: false
+      - name: Configure pnpm store path
+        id: pnpm-store
+        run: |
+          store_path=$(pnpm store path --silent)
+          echo "path=$store_path" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6.1.0
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: macos-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}-desktop-hosted
+          restore-keys: |
+            macos-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Package unsigned DMG
+        run: |
+          extra=()
+          if [[ -n "${PACKAGE_BUILD_VERSION//[[:space:]]/}" ]]; then
+            extra+=(--build-version "$PACKAGE_BUILD_VERSION")
+          fi
+          pnpm run package:desktop:mac:arm64:unsigned -- --check "${extra[@]}"
+          pnpm run package:desktop:mac:arm64:unsigned -- "${extra[@]}"
+      - name: Retain packaging diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: desktop-mac-arm64-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          include-hidden-files: true
+          path: apps/desktop/.desktop-build/packaging-runs/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Retain unsigned DMG
+        if: success()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: desktop-mac-arm64-${{ github.run_id }}-${{ github.run_attempt }}
+          include-hidden-files: true
+          path: apps/desktop/.desktop-build/targets/mac-arm64/unsigned-artifacts/*
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+
+  win-x64:
+    name: Windows x64
+    runs-on: windows-2025
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PACKAGE_BUILD_VERSION: ${{ inputs.build_version }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          clean: true
+      - uses: pnpm/action-setup@v5.0.0
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm-${{ github.run_id }}-${{ github.run_attempt }}-win-x64
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: ${{ env.PRIMARY_NODE_VERSION }}
+          package-manager-cache: false
+      - name: Configure pnpm store path
+        id: pnpm-store
+        run: |
+          $store = (pnpm store path --silent).Trim()
+          "path=$store" >> $env:GITHUB_OUTPUT
+      - uses: actions/cache@v6.1.0
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: windows-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}-desktop-hosted
+          restore-keys: |
+            windows-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Write unsigned Windows policy settings
+        run: |
+          @'
+          DSH_DESKTOP_APP_ID=com.deepseek.harness
+          DSH_DESKTOP_AUTO_UPDATE_ENV=test
+          DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN=https://example.com
+          DSH_DESKTOP_MANDATORY_UPDATE_CONFIG={"allowedAuthOrigins":["https://login.example.com"]}
+          '@ | Set-Content -LiteralPath apps/desktop/.env.windows -Encoding utf8NoBOM
+      - name: Package unsigned installer
+        run: |
+          $extra = @()
+          $version = if ($env:PACKAGE_BUILD_VERSION) { $env:PACKAGE_BUILD_VERSION.Trim() } else { '' }
+          if ($version) { $extra = @('--build-version', $version) }
+          pnpm run package:desktop:win:x64:unsigned -- --check @extra
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm run package:desktop:win:x64:unsigned -- @extra
+          exit $LASTEXITCODE
+      - name: Retain packaging diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: desktop-win-x64-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          include-hidden-files: true
+          path: apps/desktop/.desktop-build/packaging-runs/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Retain unsigned installer
+        if: success()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: desktop-win-x64-${{ github.run_id }}-${{ github.run_attempt }}
+          include-hidden-files: true
+          path: apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/*
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14

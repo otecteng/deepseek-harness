@@ -17,6 +17,7 @@ description: "在本地或 Windows／macOS Actions 中生成 Desktop 安装包�
 - [配置与本地构建](#configuration-and-local-builds)
 - [Windows Actions 打包](#windows-actions)
 - [macOS 自托管打包](#macos-actions)
+- [GitHub 托管的未签名安装包](#hosted-actions)
 - [未签名 Windows 测试安装包](#unsigned-windows-test-installer)
 - [无发布签名的本地 macOS DMG](#local-macos-dmg-without-release-signing)
 - [macOS 发布签名与诊断](#macos-release-signing)
@@ -30,7 +31,7 @@ description: "在本地或 Windows／macOS Actions 中生成 Desktop 安装包�
 
 ## 选择打包方式
 
-安装锁定依赖后，从仓库根目录运行本地命令。本地构建使用平台命令，已注册的自托管 runner 使用对应平台的 Actions。test/production 部署与 signed/unsigned 模式分别选择。任何 Windows 签名构建或共享 runner 使用前，先阅读 [Windows 签名与 runner 运维](../windows-signing/README.zh.md#trust-and-isolation)。安装与打包分开进行；[发布](../publishing/README.zh.md)还需要单独的显式操作。
+安装锁定依赖后，从仓库根目录运行本地命令。本地构建使用平台命令，已注册的自托管 runner 使用对应平台的 Actions，未签名的 macOS arm64 和 Windows x64 安装包也可以通过 [托管工作流](#hosted-actions) 在 GitHub 托管 runner 上构建。test/production 部署与 signed/unsigned 模式分别选择。任何 Windows 签名构建或共享 runner 使用前，先阅读 [Windows 签名与 runner 运维](../windows-signing/README.zh.md#trust-and-isolation)。安装与打包分开进行；[发布](../publishing/README.zh.md)还需要单独的显式操作。
 
 将 `DSH_DESKTOP_PACKAGE_CACHE_DIR` 设为绝对构建缓存目录以跨 checkout 复用；详见[缓存配置与生命周期](#desktop-runtime-preparation)。
 
@@ -145,6 +146,14 @@ bash apps/desktop/scripts/macos-runner-service.sh status "$HOME/dsh-ci/runner"
 ```
 
 安装脚本将启动脚本复制到 `runner/dsh-service`，将服务 PATH 设为 Node 24 和系统工具，并使用 GitHub 的 `svc.sh` 与 `runsvc.sh`。LaunchAgent 在 SSH 断开后继续运行，但重启后需要该账户登录桌面，注销桌面时停止。FileVault 磁盘解锁仍由操作人员完成，这不提供无人值守开机。日志位于 `runner/dsh-service/stdout.log` 和 `stderr.log`；验收时确认出现 `Connected to GitHub` 与 `Listening for Jobs`。更新已安装的启动脚本或工具路径时，等待 runner 空闲，依次执行 `stop`、`uninstall`，再重新安装。这两个操作都不会注销 runner 或删除打包凭据。卸载保留 `runner/dsh-service`（包括日志）和显式 `.path`；重新安装会替换启动快照和 PATH。
+
+<a id="hosted-actions"></a>
+
+## GitHub 托管的未签名安装包
+
+`Package Desktop · hosted` [手动工作流](../../../.github/workflows/desktop-hosted-package.yml) 在 GitHub 托管的 Apple Silicon runner `macos-15` 上构建未签名 macOS arm64 DMG，并在 `windows-2025` 上构建未签名 Windows x64 安装包。签名发布打包仍走自托管工作流。在 Actions 中选择该工作流、源码分支，按需填写 `build_version` 后运行。版本留空时使用源码中的产品版本。成功的安装包和诊断日志随该次运行保留 14 天。macOS 可能要求在隐私与安全性中批准，Windows SmartScreen 可能告警；这些产物用于内部安装测试。
+
+Windows 任务在 runner 上写入 `apps/desktop/.env.windows`，应用 ID 为 `com.deepseek.harness`，并带占位 HTTPS 策略源。未签名 Windows 命令在校验策略设置前需要该文件。该文件留在 runner 上。GitHub 托管机器的磁盘小于打包专用机器；磁盘写满时任务会在上传安装包前停止。
 
 <a id="unsigned-windows-test-installer"></a>
 

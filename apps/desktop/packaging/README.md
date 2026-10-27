@@ -17,6 +17,7 @@ Build Desktop installers locally or through Windows or macOS Actions, choose dep
 - [Configuration and local builds](#configuration-and-local-builds)
 - [Windows Actions packaging](#windows-actions)
 - [macOS self-hosted packaging](#macos-actions)
+- [GitHub-hosted unsigned packages](#hosted-actions)
 - [Unsigned Windows test installer](#unsigned-windows-test-installer)
 - [Local macOS DMG without release signing](#local-macos-dmg-without-release-signing)
 - [macOS release signing and diagnostics](#macos-release-signing)
@@ -30,7 +31,7 @@ Build Desktop installers locally or through Windows or macOS Actions, choose dep
 
 ## Choose a build path
 
-Run local commands from the repository root after installing locked dependencies. Use platform-specific commands for a local build, or platform Actions for the registered self-hosted runner. Choose test or production deployment independently from signed or unsigned mode. Read [Windows signing and runner operations](../windows-signing/README.md#trust-and-isolation) before any Windows signed build or shared-runner use. Installation is separate from packaging; [publication](../publishing/README.md) is a further explicit operation.
+Run local commands from the repository root after installing locked dependencies. Use platform-specific commands for a local build, platform Actions for the registered self-hosted runner, or the [hosted workflow](#hosted-actions) for unsigned macOS arm64 and Windows x64 packages on GitHub-hosted runners. Choose test or production deployment independently from signed or unsigned mode. Read [Windows signing and runner operations](../windows-signing/README.md#trust-and-isolation) before any Windows signed build or shared-runner use. Installation is separate from packaging; [publication](../publishing/README.md) is a further explicit operation.
 
 Set `DSH_DESKTOP_PACKAGE_CACHE_DIR` to an absolute build-cache directory for reuse across checkouts; see [cache configuration and lifecycle](#desktop-runtime-preparation).
 
@@ -145,6 +146,14 @@ bash apps/desktop/scripts/macos-runner-service.sh status "$HOME/dsh-ci/runner"
 ```
 
 The installer copies its startup script into `runner/dsh-service`, sets the service PATH to Node 24 plus system tools, and uses GitHub's `svc.sh` and `runsvc.sh`. The LaunchAgent survives SSH disconnection, but requires that account's desktop login after reboot and stops on desktop logout. FileVault disk unlock remains an operator step; this does not provide unattended boot. Logs are `runner/dsh-service/stdout.log` and `stderr.log`; verify `Connected to GitHub` and `Listening for Jobs`. To update installed startup code or tool paths, wait until the runner is idle, run `stop`, then `uninstall`, and repeat installation. Neither action unregisters the runner or removes packaging credentials. Uninstall retains `runner/dsh-service` (including logs) and the explicit `.path`; reinstall replaces the startup snapshot and PATH.
+
+<a id="hosted-actions"></a>
+
+## GitHub-hosted unsigned packages
+
+The `Package Desktop · hosted` [manual workflow](../../../.github/workflows/desktop-hosted-package.yml) builds an unsigned macOS arm64 DMG on the GitHub-hosted Apple Silicon runner `macos-15` and an unsigned Windows x64 installer on `windows-2025`. It leaves signed release packaging on the self-hosted workflows. In Actions, select this workflow, choose the source branch, optionally fill `build_version`, and run it. An empty version uses the checkout's product version. Successful installers and diagnostic logs stay with the run for 14 days. macOS may ask for approval in Privacy & Security, and Windows SmartScreen may warn; these artifacts are for internal installation testing.
+
+The Windows job writes `apps/desktop/.env.windows` on the runner with application id `com.deepseek.harness` and placeholder HTTPS policy origins, which the unsigned Windows command requires before it validates policy settings. That file remains on the runner. GitHub-hosted disks are smaller than the packaging machines; a full disk stops the job before an installer is uploaded.
 
 <a id="unsigned-windows-test-installer"></a>
 
