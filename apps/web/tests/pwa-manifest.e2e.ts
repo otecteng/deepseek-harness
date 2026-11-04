@@ -143,14 +143,16 @@ it('preserves fractional coverage along the Apple icon curves', async () => {
       for (let y = 1; y < 179; y += 1) {
         for (let x = 1; x < 179; x += 1) {
           const value = brightness(x, y)
-          if (value <= 85 || value >= 200) continue
-          // Neighboring ink and background distinguish edge coverage from the
-          // source's gradients and shadows, which remain in both renderings.
+          // The jet's orange body sits near 100 and the tile near 240, so the
+          // antialiased rim is the band between them. Neighboring ink and
+          // background distinguish that rim from the tile gradient and shadows,
+          // which remain in both renderings.
+          if (value <= 130 || value >= 210) continue
           const neighbors: number[] = []
           for (let dy = -1; dy <= 1; dy += 1) {
             for (let dx = -1; dx <= 1; dx += 1) neighbors.push(brightness(x + dx, y + dy))
           }
-          if (Math.min(...neighbors) < 70 && Math.max(...neighbors) > 220) partial += 1
+          if (Math.min(...neighbors) < 130 && Math.max(...neighbors) > 220) partial += 1
         }
       }
       return partial
