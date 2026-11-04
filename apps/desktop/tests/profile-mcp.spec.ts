@@ -25,6 +25,9 @@ it('retains one shared resource consumer in the Desktop Web profile', () => {
       { id: 'mcp-resources', name: '@deepseek-ai/dsh-mcp-resources' },
     ])
     expect(rows.filter(row => row.name === '@deepseek-ai/dsh-mcp-client')).toEqual([])
+    expect(rows.find(row => row.id === 'dsh-taskboard')).toMatchObject({ name: 'dsh-taskboard' })
+    expect(rows.find(row => row.id === 'dsh-context')).toMatchObject({ name: 'dsh-context' })
+    expect(profile.skippedBundles).toEqual([])
     expect(rows.find(row => row.id === 'webserver')).toMatchObject({ name: '@deepseek-ai/dsh-host-webserver' })
     expect(rows.find(row => row.id === 'webserver')?.disabled).not.toBe(true)
     expect(warnings).toEqual([])

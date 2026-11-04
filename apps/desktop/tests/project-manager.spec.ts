@@ -191,7 +191,42 @@ describe('desktop external plugin profile', () => {
     await expect(manager.applyRelease()).resolves.toBeUndefined()
     await expect(manager.applyRelease()).resolves.toBeUndefined()
     expect(plugins(manager)).toEqual([])
-    expect(JSON.parse(readFileSync(join(manager.paths.profile, 'package.json'), 'utf8'))).toMatchObject({ dependencies: {} })
+    expect(JSON.parse(readFileSync(join(manager.paths.profile, 'package.json'), 'utf8'))).toMatchObject({
+      dependencies: {},
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@deepseek-ai/dsh-pilot'] } },
+    })
+  })
+
+  it('appends the pilot bundle and drops standalone taskboard and context layers', async () => {
+    const { manager } = setup()
+    await manager.applyRelease()
+    const path = join(manager.paths.profile, 'package.json')
+    const manifest = JSON.parse(readFileSync(path, 'utf8')) as {
+      dependencies: Record<string, string>
+      dsh: { profile: { bundles: string[] } }
+    }
+    manifest.dependencies['dsh-taskboard'] = '0.9.6'
+    manifest.dependencies['dsh-context'] = '0.77.0'
+    manifest.dependencies.dshmarket = '1.0.0'
+    manifest.dsh.profile.bundles = [
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+      'dshmarket',
+      'dsh-taskboard',
+      'dsh-context',
+    ]
+    writeFileSync(path, JSON.stringify(manifest))
+    await manager.applyRelease()
+    const next = JSON.parse(readFileSync(path, 'utf8')) as typeof manifest
+    expect(next.dsh.profile.bundles).toEqual([
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+      'dshmarket',
+      '@deepseek-ai/dsh-pilot',
+    ])
+    expect(next.dependencies['dsh-taskboard']).toBe('0.9.6')
+    expect(next.dependencies['dsh-context']).toBe('0.77.0')
+    expect(next.dependencies.dshmarket).toBe('1.0.0')
   })
 
   it.skipIf(process.platform !== 'win32')('reuses the profile when the launch path changes only Windows letter casing', async () => {

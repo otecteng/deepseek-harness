@@ -50,6 +50,7 @@
     "@deepseek-ai/dsh-mcp-client": "workspace:*",
     "@deepseek-ai/dsh-official-bundles": "workspace:*",
     "@deepseek-ai/dsh-persona": "workspace:*",
+    "@deepseek-ai/dsh-pilot": "workspace:*",
     "@deepseek-ai/dsh-plan-mode": "workspace:*",
     "@deepseek-ai/dsh-pwsh-local": "workspace:*",
     "@deepseek-ai/dsh-pwsh-sandbox": "workspace:*",

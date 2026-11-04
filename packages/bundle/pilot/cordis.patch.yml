@@ -1,0 +1,7 @@
+# Desktop pilot layer, applied after dsh-web-app.
+# These rows are the patch lists published by dsh-taskboard and dsh-context.
+- insert:
+    - id: dsh-taskboard
+      name: dsh-taskboard
+    - id: dsh-context
+      name: dsh-context

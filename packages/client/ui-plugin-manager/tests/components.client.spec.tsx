@@ -770,6 +770,7 @@ describe('PluginManagerPage', () => {
           '@deepseek-ai/dsh-sdk-app',
           '@deepseek-ai/dsh-acp-app',
           '@deepseek-ai/dsh-sdk-minimal',
+          '@deepseek-ai/dsh-pilot',
           '@deepseek-ai/dsh-experimental-terminal-bundle',
         ].map(name => pkg({ name })),
         pkg({ name: '@acme/dsh-base', readOnlyReason: 'management-required' }),

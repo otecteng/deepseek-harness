@@ -23,12 +23,15 @@ import type { DesktopPaths } from './paths.ts'
 import type { DesktopRelease } from './release.ts'
 import { readDesktopRuntime } from './runtime-tree.ts'
 import { initProfile, removeLinkProjections, sanitizeProfile } from '@deepseek-ai/dsh-app-boot'
+import { PILOT_BUNDLE, PILOT_SUPERSEDED_BUNDLES } from '@deepseek-ai/dsh-pilot'
 import { PROFILE_TEMPLATES, type ProfileTemplate } from '@deepseek-ai/dsh-official-bundles'
 
 const PROJECT_NAME = '@deepseek-ai/dsh-desktop-runtime'
 const DSH_PACKAGE = '@deepseek-ai/dsh'
 const CORE_BUILD_PACKAGE = '@deepseek-ai/dsh-subprocess-local'
 const WEB_PROFILE = PROFILE_TEMPLATES.web as ProfileTemplate
+const DESKTOP_PROFILE_BUNDLES = [...WEB_PROFILE.bundles, PILOT_BUNDLE]
+const SUPERSEDED_BUNDLES = new Set<string>(PILOT_SUPERSEDED_BUNDLES)
 const WORKSPACE_SETTINGS = 'nodeLinker: hoisted\nautoInstallPeers: false\n'
 function writeJson(path: string, value: unknown): void {
   writeFileSync(path, `${JSON.stringify(value, undefined, 2)}\n`, { mode: 0o600 })
@@ -73,7 +76,7 @@ export class DesktopProjectManager {
    * @returns Backup path after the locked profile write, or undefined if the patch was absent.
    */
   async disableAllPlugins(): Promise<string | undefined> {
-    return this.withLock(() => sanitizeProfile('dsh', this.paths.profile, WEB_PROFILE.bundles))
+    return this.withLock(() => sanitizeProfile('dsh', this.paths.profile, DESKTOP_PROFILE_BUNDLES))
   }
 
   /**
@@ -138,7 +141,7 @@ export function createRuntimeProjectMetadata(projectDir: string, release: Deskto
     private: true,
     version: '0.0.0',
     dependencies: desktopCorePackageOverrides(packageSet),
-    dsh: { profile: { bundles: [...WEB_PROFILE.bundles] } },
+    dsh: { profile: { bundles: [...DESKTOP_PROFILE_BUNDLES] } },
   }
   writeJson(join(projectDir, 'package.json'), manifest)
   writeFileSync(
@@ -163,7 +166,7 @@ export function createDevelopmentProjectMetadata(projectDir: string, release: De
       [DSH_PACKAGE]: release.version,
       [DESKTOP_HOST_PACKAGE]: release.version,
     },
-    dsh: { profile: { bundles: [...WEB_PROFILE.bundles] } },
+    dsh: { profile: { bundles: [...DESKTOP_PROFILE_BUNDLES] } },
   }
   writeJson(join(projectDir, 'package.json'), manifest)
   writeFileSync(join(projectDir, 'pnpm-workspace.yaml'), workspaceFile(), { mode: 0o600 })
@@ -171,5 +174,34 @@ export function createDevelopmentProjectMetadata(projectDir: string, release: De
 
 /** Create the first external plugin profile without running a package manager. */
 export function createPluginProfile(projectDir: string): void {
-  initProfile(projectDir, WEB_PROFILE.bundles)
+  initProfile(projectDir, DESKTOP_PROFILE_BUNDLES)
+  ensurePilotBundle(projectDir)
+}
+
+/** Return whether two bundle lists have the same names in the same order. */
+function sameBundles(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((name, index) => name === right[index])
+}
+
+/**
+ * Append the pilot bundle and drop the standalone bundles its patch replaces.
+ * Existing package dependencies are left in place.
+ * @param projectDir - Desktop profile directory that already has a manifest.
+ */
+function ensurePilotBundle(projectDir: string): void {
+  const manifestPath = join(projectDir, 'package.json')
+  if (!existsSync(manifestPath)) return
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+    dsh?: { profile?: { bundles?: string[] } }
+  }
+  const bundles = manifest.dsh?.profile?.bundles
+  if (bundles === undefined) return
+  const next = bundles.filter(name => !SUPERSEDED_BUNDLES.has(name))
+  if (!next.includes(PILOT_BUNDLE)) next.push(PILOT_BUNDLE)
+  if (sameBundles(bundles, next)) return
+  manifest.dsh = {
+    ...manifest.dsh,
+    profile: { ...manifest.dsh?.profile, bundles: next },
+  }
+  writeJson(manifestPath, manifest)
 }

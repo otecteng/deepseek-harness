@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/bundle/pilot/README.md
+/:
+  en: 754095f4ed51bd48
+  zh: 55e120041a5fff5b
+/deepseek-ai-dsh-pilot:
+  en: 55c81edd10486577
+  zh: b577d9a8617b081f
+/deepseek-ai-dsh-pilot/summary:
+  en: de1b48fda50f7ed9
+  zh: 1e39ac8ed4344ea7
+/deepseek-ai-dsh-pilot/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-pilot/use-this-package:
+  en: 6927fadabf952f98
+  zh: 6acf7e3fac3cbf20
+/deepseek-ai-dsh-pilot/use-this-package/what-you-get:
+  en: 7ec0eace5f75c23a
+  zh: 3adf51665703b1fc
+/deepseek-ai-dsh-pilot/understand-the-implementation:
+  en: ac579fc787486f41
+  zh: 49941b263cfedf68
+/deepseek-ai-dsh-pilot/further-exploration:
+  en: 6e79b8af9d0245f3
+  zh: 8a5a723139e1d123
+/deepseek-ai-dsh-pilot/model-experience:
+  en: 564be0bb84d7bdb3
+  zh: c5ad0488ff870c92
+/deepseek-ai-dsh-pilot/model-experience/kv-cache-effect:
+  en: 9a77a5e3c2dc7da5
+  zh: 908a6f3c32ece871
+/deepseek-ai-dsh-pilot/known-limitations-and-deferred-work:
+  en: 3ce85004b1dda880
+  zh: 0bc91390322e77df
+/deepseek-ai-dsh-pilot/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

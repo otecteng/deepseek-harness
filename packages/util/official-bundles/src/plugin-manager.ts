@@ -18,7 +18,7 @@ export const PROTECTED_PLUGINS: ReadonlySet<string> = new Set([
 ])
 
 /**
- * Built-in profile bundles and persistent terminals, which have no plugin manager page.
+ * Built-in profile bundles, the Desktop pilot layer, and persistent terminals, which have no plugin manager page.
  * Their Host availability and activation stay intact.
  */
 export const HIDDEN_BUNDLES: ReadonlySet<string> = new Set([
@@ -28,6 +28,7 @@ export const HIDDEN_BUNDLES: ReadonlySet<string> = new Set([
   '@deepseek-ai/dsh-sdk-app',
   '@deepseek-ai/dsh-acp-app',
   '@deepseek-ai/dsh-sdk-minimal',
+  '@deepseek-ai/dsh-pilot',
   '@deepseek-ai/dsh-experimental-terminal-bundle',
 ])
 
